@@ -1,0 +1,65 @@
+# [Python]
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.venv
+.env
+.pytest_cache/
+.coverage
+htmlcov/
+
+# [Node.js / React / Next.js]
+node_modules/
+.next/
+out/
+build/
+dist/
+.vercel
+.turbo
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# [IDE / Editors]
+.vscode/
+.idea/
+*.swp
+*.swo
+.project
+.settings/
+.vscode/launch.json
+.vscode/settings.json
+
+# [Operating System]
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# [Project specific]
+backend/temp/
+backend/uploads/
+data/*.json
+!data/example.json
+scripts/*.sh
+logs/
+*.bak
+*.tmp
+
+# AI Context / Instructions
+CLAUDE.md
+.gemini/
+.agent/
+.agents/
+.claudemanager/
+.cursor/
+.history/
+

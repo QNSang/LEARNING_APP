@@ -1,0 +1,171 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* KnowledgeMap Dark Theme - Strict Spec */
+  --background: #0A0E1A;
+  --foreground: #F1F5F9;
+  
+  --card: #111827;
+  --card-foreground: #F1F5F9;
+  
+  --popover: #111827;
+  --popover-foreground: #F1F5F9;
+  
+  --primary: #3B82F6;
+  --primary-foreground: #FFFFFF;
+  
+  --secondary: #1C2333;
+  --secondary-foreground: #94A3B8;
+  
+  --muted: #1C2333;
+  --muted-foreground: #94A3B8;
+  
+  --accent: #8B5CF6;
+  --accent-foreground: #FFFFFF;
+  
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  
+  --border: #1F2D45;
+  --input: #0A0E1A;
+  --ring: #3B82F6;
+  --radius: 0.75rem;
+  
+  /* Custom KnowledgeMap tokens */
+  --km-bg-primary: #0A0E1A;
+  --km-bg-secondary: #111827;
+  --km-bg-tertiary: #1C2333;
+  --km-border-default: #1F2D45;
+  --km-border-highlight: #2D4A7A;
+  --km-accent-primary: #3B82F6;
+  --km-accent-secondary: #8B5CF6;
+  --km-accent-success: #10B981;
+  --km-accent-warning: #F59E0B;
+  --km-accent-danger: #EF4444;
+  --km-text-primary: #F1F5F9;
+  --km-text-secondary: #94A3B8;
+  --km-text-tertiary: #475569;
+  
+  /* Node colors - Strictly based on Importance */
+  --km-node-core-bg: #1E3A5F;
+  --km-node-core-border: #3B82F6;
+  --km-node-core-text: #93C5FD;
+  
+  --km-node-supporting-bg: #1E1B4B;
+  --km-node-supporting-border: #8B5CF6;
+  --km-node-supporting-text: #C4B5FD;
+  
+  --km-node-detail-bg: #1C2333;
+  --km-node-detail-border: #475569;
+  --km-node-detail-text: #94A3B8;
+}
+
+@theme inline {
+  --font-sans: 'Inter', 'Geist', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Geist Mono', monospace;
+  
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-[#0A0E1A] text-[#F1F5F9] antialiased;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.05) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.05) 0px, transparent 50%);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0A0E1A;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1F2D45;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2D4A7A;
+}
+
+/* Dot grid background pattern */
+.dot-grid {
+  background-image: radial-gradient(circle, #1F2D45 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Spotlight Effect Utility */
+.spotlight {
+    position: relative;
+}
+.spotlight::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+        600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+        rgba(59, 130, 246, 0.06),
+        transparent 40%
+    );
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Shimmer animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, #111827 25%, #1F2D45 50%, #111827 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+/* Node Glow */
+.node-glow {
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+}
+
+.glass-panel {
+    background: rgba(17, 24, 39, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(31, 45, 69, 0.5);
+}
