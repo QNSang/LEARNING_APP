@@ -56,10 +56,10 @@ logs/
 
 # AI Context / Instructions
 CLAUDE.md
+!CLAUDE.md
 .gemini/
 .agent/
 .agents/
 .claudemanager/
 .cursor/
 .history/
-
