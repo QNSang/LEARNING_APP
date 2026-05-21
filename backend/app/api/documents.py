@@ -12,6 +12,7 @@ from app.core.config import Settings, get_settings
 from app.core.errors import AppError
 from app.db.repositories.document_repo import DocumentRepository, get_document_repository
 from app.models.document import Document, DocumentCreate
+from app.models.graph import LearningGraph
 from app.pipeline.orchestrator import (
     ChunkingResult,
     DocumentPipeline,
@@ -124,3 +125,18 @@ async def process_document(
         raise AppError("Uploaded source file was not found.", status_code=404)
 
     return pipeline.parse_and_chunk(document_id, file_path)
+
+
+@router.post("/{document_id}/extract-graph", response_model=LearningGraph)
+async def extract_document_graph(
+    document_id: UUID,
+    repo: DocumentRepository = Depends(get_document_repository),
+    pipeline: DocumentPipeline = Depends(get_document_pipeline),
+) -> LearningGraph:
+    """Run Phase 4 Gemini extraction for an already chunked document."""
+
+    document = repo.get(document_id)
+    if document is None:
+        raise AppError("Document not found.", status_code=404)
+
+    return pipeline.extract_learning_graph(document_id)

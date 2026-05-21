@@ -22,6 +22,7 @@ class Settings(BaseModel):
     supabase_key: str | None = Field(default=None)
     supabase_service_key: str | None = Field(default=None)
     gemini_api_key: str | None = Field(default=None)
+    extraction_model: str = Field(default="gemini-2.0-flash")
     upload_dir: Path = Field(default=Path("uploads"))
     chunk_size_chars: int = Field(default=3200, gt=0)
     chunk_overlap_chars: int = Field(default=400, ge=0)
@@ -48,6 +49,7 @@ def get_settings() -> Settings:
         supabase_key=getenv("SUPABASE_KEY") or getenv("SUPABASE_SERVICE_KEY"),
         supabase_service_key=getenv("SUPABASE_SERVICE_KEY"),
         gemini_api_key=getenv("GEMINI_API_KEY"),
+        extraction_model=getenv("EXTRACTION_MODEL", "gemini-2.0-flash"),
         upload_dir=Path(getenv("UPLOAD_DIR", "uploads")),
         chunk_size_chars=int(getenv("CHUNK_SIZE_CHARS", "3200")),
         chunk_overlap_chars=int(getenv("CHUNK_OVERLAP_CHARS", "400")),

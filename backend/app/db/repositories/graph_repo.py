@@ -72,6 +72,18 @@ class GraphRepository:
             raise AppError("Knowledge node was not created.", status_code=500)
         return KnowledgeNode.model_validate(row)
 
+    def upsert_node(self, payload: KnowledgeNodeCreate) -> KnowledgeNode:
+        response = execute_query(
+            self.client.table("knowledge_nodes").upsert(
+                to_record(payload),
+                on_conflict="document_id,node_key",
+            )
+        )
+        row = first_or_none(response.data or [])
+        if not row:
+            raise AppError("Knowledge node was not saved.", status_code=500)
+        return KnowledgeNode.model_validate(row)
+
     def create_edge(self, payload: KnowledgeEdgeCreate) -> KnowledgeEdge:
         response = execute_query(
             self.client.table("knowledge_edges")
@@ -82,6 +94,18 @@ class GraphRepository:
             raise AppError("Knowledge edge was not created.", status_code=500)
         return KnowledgeEdge.model_validate(row)
 
+    def upsert_edge(self, payload: KnowledgeEdgeCreate) -> KnowledgeEdge:
+        response = execute_query(
+            self.client.table("knowledge_edges").upsert(
+                to_record(payload),
+                on_conflict="document_id,from_node_id,to_node_id,edge_type",
+            )
+        )
+        row = first_or_none(response.data or [])
+        if not row:
+            raise AppError("Knowledge edge was not saved.", status_code=500)
+        return KnowledgeEdge.model_validate(row)
+
     def create_citation(self, payload: NodeChunkRefCreate) -> NodeChunkRef:
         response = execute_query(
             self.client.table("node_chunk_refs")
@@ -90,6 +114,18 @@ class GraphRepository:
         row = first_or_none(response.data or [])
         if not row:
             raise AppError("Citation was not created.", status_code=500)
+        return NodeChunkRef.model_validate(row)
+
+    def upsert_citation(self, payload: NodeChunkRefCreate) -> NodeChunkRef:
+        response = execute_query(
+            self.client.table("node_chunk_refs").upsert(
+                to_record(payload),
+                on_conflict="node_id,chunk_id",
+            )
+        )
+        row = first_or_none(response.data or [])
+        if not row:
+            raise AppError("Citation was not saved.", status_code=500)
         return NodeChunkRef.model_validate(row)
 
 
