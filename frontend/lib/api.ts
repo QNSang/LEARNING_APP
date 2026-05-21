@@ -11,3 +11,42 @@ export function getApiBaseUrl() {
 export function getHealthUrl() {
   return `${getApiBaseUrl()}/health`
 }
+
+export type ReviewQueue = {
+  user_id?: string | null
+  due_at: string
+  items: Array<{
+    node_label: string
+    node_description?: string | null
+    prerequisite_count: number
+    priority: number
+    mastery: {
+      id: string
+      node_id: string
+      mastery_score: number
+      status: string
+      next_review_at?: string | null
+      review_count: number
+      correct_count: number
+      wrong_count: number
+    }
+    practice_item?: {
+      id: string
+      question: string
+      type: string
+    } | null
+  }>
+}
+
+export async function getReviewQueue(userId?: string) {
+  const params = userId ? `?user_id=${encodeURIComponent(userId)}` : ""
+  const response = await fetch(`${getApiBaseUrl()}/api/review/queue${params}`, {
+    cache: "no-store",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load review queue")
+  }
+
+  return (await response.json()) as ReviewQueue
+}

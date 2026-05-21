@@ -29,6 +29,27 @@ class PracticeRepository:
         )
         return [PracticeItem.model_validate(row) for row in response.data or []]
 
+    def get_item(self, practice_item_id: UUID) -> PracticeItem | None:
+        response = execute_query(
+            self.client.table("practice_items")
+            .select("*")
+            .eq("id", str(practice_item_id))
+            .limit(1)
+        )
+        row = first_or_none(response.data or [])
+        return PracticeItem.model_validate(row) if row else None
+
+    def get_first_for_node(self, node_id: UUID) -> PracticeItem | None:
+        response = execute_query(
+            self.client.table("practice_items")
+            .select("*")
+            .eq("node_id", str(node_id))
+            .order("created_at")
+            .limit(1)
+        )
+        row = first_or_none(response.data or [])
+        return PracticeItem.model_validate(row) if row else None
+
     def create_item(self, payload: PracticeItemCreate) -> PracticeItem:
         response = execute_query(
             self.client.table("practice_items").insert(to_record(payload))

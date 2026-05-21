@@ -1,5 +1,6 @@
 """Mastery repository."""
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from app.core.errors import AppError
@@ -23,6 +24,45 @@ class MasteryRepository:
             .order("updated_at", desc=True)
         )
         return [UserNodeMastery.model_validate(row) for row in response.data or []]
+
+    def get_by_user_and_node(
+        self,
+        *,
+        user_id: UUID | None,
+        node_id: UUID,
+    ) -> UserNodeMastery | None:
+        query = self.client.table("user_node_mastery").select("*").eq("node_id", str(node_id))
+        if user_id is None:
+            query = query.is_("user_id", "null")
+        else:
+            query = query.eq("user_id", str(user_id))
+
+        response = execute_query(query.limit(1))
+        row = first_or_none(response.data or [])
+        return UserNodeMastery.model_validate(row) if row else None
+
+    def list_due(
+        self,
+        *,
+        user_id: UUID | None = None,
+        limit: int = 25,
+        due_at: datetime | None = None,
+    ) -> list[dict]:
+        due_time = due_at or datetime.now(UTC)
+        query = (
+            self.client.table("user_node_mastery")
+            .select("*, knowledge_nodes!inner(label, description, document_id)")
+            .lte("next_review_at", due_time.isoformat())
+            .order("next_review_at")
+            .limit(limit)
+        )
+        if user_id is None:
+            query = query.is_("user_id", "null")
+        else:
+            query = query.eq("user_id", str(user_id))
+
+        response = execute_query(query)
+        return response.data or []
 
     def upsert(self, payload: UserNodeMasteryCreate) -> UserNodeMastery:
         response = execute_query(
