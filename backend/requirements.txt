@@ -12,3 +12,6 @@ python-docx
 sentence-transformers
 numpy
 python-multipart
+dspy-ai
+litellm
+tiktoken
