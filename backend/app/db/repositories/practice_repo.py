@@ -59,6 +59,19 @@ class PracticeRepository:
             raise AppError("Practice item was not created.", status_code=500)
         return PracticeItem.model_validate(row)
 
+    def create_items(self, payloads: list[PracticeItemCreate]) -> list[PracticeItem]:
+        if not payloads:
+            return []
+        response = execute_query(
+            self.client.table("practice_items").insert(
+                [to_record(payload) for payload in payloads]
+            )
+        )
+        return [
+            PracticeItem.model_validate(row)
+            for row in response.data or []
+        ]
+
     def create_attempt(self, payload: PracticeAttemptCreate) -> PracticeAttempt:
         response = execute_query(
             self.client.table("practice_attempts")

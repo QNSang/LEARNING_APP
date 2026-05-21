@@ -11,6 +11,13 @@ from app.models.graph import (
     NodeChunkRef,
     NodeChunkRefCreate,
 )
+from app.models.learning_path import (
+    LearningPath,
+    LearningPathCreate,
+    LearningPathStep,
+    LearningPathStepCreate,
+    LearningPathWithSteps,
+)
 from app.models.mastery import UserNodeMastery, UserNodeMasteryCreate
 from app.models.module import Module, ModuleCreate, ModuleNode, ModuleNodeCreate
 from app.models.practice import (
@@ -33,6 +40,11 @@ __all__ = [
     "KnowledgeNode",
     "KnowledgeNodeCreate",
     "LearningGraph",
+    "LearningPath",
+    "LearningPathCreate",
+    "LearningPathStep",
+    "LearningPathStepCreate",
+    "LearningPathWithSteps",
     "Module",
     "ModuleCreate",
     "ModuleNode",

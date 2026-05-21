@@ -11,6 +11,11 @@ from app.models.practice import (
     PracticeItem,
     PracticeItemCreate,
 )
+from app.pipeline.practice_gen import (
+    PracticeGenerationResult,
+    PracticeGenerator,
+    get_practice_generator,
+)
 
 
 router = APIRouter(tags=["practice"])
@@ -24,6 +29,19 @@ async def list_document_practice(
     """Return generated practice items for a document."""
 
     return repo.list_by_document(document_id)
+
+
+@router.post(
+    "/documents/{document_id}/generate-practice",
+    response_model=PracticeGenerationResult,
+)
+async def generate_document_practice(
+    document_id: UUID,
+    generator: PracticeGenerator = Depends(get_practice_generator),
+) -> PracticeGenerationResult:
+    """Generate grounded practice items from a document graph."""
+
+    return generator.generate_for_document(document_id)
 
 
 @router.post("/practice", response_model=PracticeItem)
