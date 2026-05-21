@@ -1,30 +1,21 @@
 """Learning graph API routes."""
 
-from fastapi import APIRouter
-from pydantic import BaseModel
+from uuid import UUID
+
+from fastapi import APIRouter, Depends
+
+from app.db.repositories.graph_repo import GraphRepository, get_graph_repository
+from app.models.graph import LearningGraph
 
 
 router = APIRouter(tags=["graph"])
 
 
-class GraphResponse(BaseModel):
-    document_id: str
-    nodes: list[dict]
-    edges: list[dict]
-    citations: list[dict]
+@router.get("/documents/{document_id}/graph", response_model=LearningGraph)
+async def get_document_graph(
+    document_id: UUID,
+    repo: GraphRepository = Depends(get_graph_repository),
+) -> LearningGraph:
+    """Return the learning graph for a document."""
 
-
-@router.get("/documents/{document_id}/graph", response_model=GraphResponse)
-async def get_document_graph(document_id: str) -> GraphResponse:
-    """Return the learning graph for a document.
-
-    Phase 0 returns an empty graph so the frontend can integrate against the
-    final response shape before extraction is implemented.
-    """
-
-    return GraphResponse(
-        document_id=document_id,
-        nodes=[],
-        edges=[],
-        citations=[],
-    )
+    return repo.get_graph(document_id)

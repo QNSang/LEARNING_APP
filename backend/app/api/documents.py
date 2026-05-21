@@ -1,34 +1,44 @@
 """Document API routes."""
 
-from fastapi import APIRouter
-from pydantic import BaseModel
+from uuid import UUID
+
+from fastapi import APIRouter, Depends
+
+from app.core.errors import AppError
+from app.db.repositories.document_repo import DocumentRepository, get_document_repository
+from app.models.document import Document, DocumentCreate
 
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
-class DocumentSummary(BaseModel):
-    id: str
-    title: str
-    status: str
+@router.get("", response_model=list[Document])
+async def list_documents(
+    repo: DocumentRepository = Depends(get_document_repository),
+) -> list[Document]:
+    """Return known documents."""
+
+    return repo.list()
 
 
-@router.get("", response_model=list[DocumentSummary])
-async def list_documents() -> list[DocumentSummary]:
-    """Return known documents.
+@router.post("", response_model=Document, status_code=201)
+async def create_document(
+    payload: DocumentCreate,
+    repo: DocumentRepository = Depends(get_document_repository),
+) -> Document:
+    """Create a document metadata record."""
 
-    Phase 0 keeps this endpoint intentionally empty until persistence is added.
-    """
-
-    return []
+    return repo.create(payload)
 
 
-@router.get("/{document_id}", response_model=DocumentSummary)
-async def get_document(document_id: str) -> DocumentSummary:
-    """Return a placeholder document shape for frontend integration."""
+@router.get("/{document_id}", response_model=Document)
+async def get_document(
+    document_id: UUID,
+    repo: DocumentRepository = Depends(get_document_repository),
+) -> Document:
+    """Return one document by id."""
 
-    return DocumentSummary(
-        id=document_id,
-        title="Phase 0 placeholder document",
-        status="new",
-    )
+    document = repo.get(document_id)
+    if document is None:
+        raise AppError("Document not found.", status_code=404)
+    return document

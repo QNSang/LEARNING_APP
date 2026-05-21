@@ -1,25 +1,21 @@
 """Chunk API routes."""
 
-from fastapi import APIRouter
-from pydantic import BaseModel
+from uuid import UUID
+
+from fastapi import APIRouter, Depends
+
+from app.db.repositories.chunk_repo import ChunkRepository, get_chunk_repository
+from app.models.chunk import Chunk
 
 
 router = APIRouter(tags=["chunks"])
 
 
-class ChunkSummary(BaseModel):
-    id: str
-    document_id: str
-    chunk_index: int
-    text: str
-    source_ref: str | None = None
+@router.get("/documents/{document_id}/chunks", response_model=list[Chunk])
+async def list_document_chunks(
+    document_id: UUID,
+    repo: ChunkRepository = Depends(get_chunk_repository),
+) -> list[Chunk]:
+    """Return chunks for a document."""
 
-
-@router.get("/documents/{document_id}/chunks", response_model=list[ChunkSummary])
-async def list_document_chunks(document_id: str) -> list[ChunkSummary]:
-    """Return chunks for a document.
-
-    Phase 0 wires the route; the parser/chunker will populate it in Phase 3.
-    """
-
-    return []
+    return repo.list_by_document(document_id)
