@@ -50,3 +50,54 @@ export async function getReviewQueue(userId?: string) {
 
   return (await response.json()) as ReviewQueue
 }
+
+export type Workspace = {
+  id: string
+  title: string
+  subject?: string | null
+  description?: string | null
+  created_at: string
+}
+
+export type WorkspaceKnowledgeBase = {
+  workspace: Workspace
+  documents: Array<{
+    id: string
+    title: string
+    subject?: string | null
+    status: string
+    created_at: string
+  }>
+  cross_document_concepts: Array<{
+    canonical_key: string
+    label: string
+    document_count: number
+    node_count: number
+    descriptions: string[]
+  }>
+}
+
+export async function getWorkspaces() {
+  const response = await fetch(`${getApiBaseUrl()}/api/workspaces`, {
+    cache: "no-store",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load workspaces")
+  }
+
+  return (await response.json()) as Workspace[]
+}
+
+export async function getWorkspaceKnowledgeBase(workspaceId: string) {
+  const response = await fetch(
+    `${getApiBaseUrl()}/api/workspaces/${workspaceId}/knowledge-base`,
+    { cache: "no-store" }
+  )
+
+  if (!response.ok) {
+    throw new Error("Unable to load workspace knowledge base")
+  }
+
+  return (await response.json()) as WorkspaceKnowledgeBase
+}

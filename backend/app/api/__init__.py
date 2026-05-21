@@ -2,13 +2,15 @@
 
 from fastapi import APIRouter
 
-from app.api import chunks, documents, graph, mastery, practice, review
+from app.api import chunks, documents, graph, mastery, modules, practice, review, workspaces
 
 
 api_router = APIRouter()
 api_router.include_router(documents.router)
 api_router.include_router(chunks.router)
 api_router.include_router(graph.router)
+api_router.include_router(modules.router)
 api_router.include_router(practice.router)
 api_router.include_router(mastery.router)
 api_router.include_router(review.router)
+api_router.include_router(workspaces.router)
