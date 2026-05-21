@@ -26,6 +26,11 @@ class Settings(BaseModel):
     upload_dir: Path = Field(default=Path("uploads"))
     chunk_size_chars: int = Field(default=3200, gt=0)
     chunk_overlap_chars: int = Field(default=400, ge=0)
+    use_neo4j: bool = Field(default=False)
+    neo4j_uri: str | None = Field(default=None)
+    neo4j_user: str | None = Field(default=None)
+    neo4j_password: str | None = Field(default=None)
+    neo4j_database: str | None = Field(default=None)
 
     @property
     def cors_origins(self) -> list[str]:
@@ -53,4 +58,9 @@ def get_settings() -> Settings:
         upload_dir=Path(getenv("UPLOAD_DIR", "uploads")),
         chunk_size_chars=int(getenv("CHUNK_SIZE_CHARS", "3200")),
         chunk_overlap_chars=int(getenv("CHUNK_OVERLAP_CHARS", "400")),
+        use_neo4j=getenv("USE_NEO4J", "false").lower() in {"1", "true", "yes"},
+        neo4j_uri=getenv("NEO4J_URI"),
+        neo4j_user=getenv("NEO4J_USER"),
+        neo4j_password=getenv("NEO4J_PASSWORD"),
+        neo4j_database=getenv("NEO4J_DATABASE"),
     )

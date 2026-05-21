@@ -101,3 +101,22 @@ export async function getWorkspaceKnowledgeBase(workspaceId: string) {
 
   return (await response.json()) as WorkspaceKnowledgeBase
 }
+
+export type Neo4jRuntimeStatus = {
+  state: "disabled" | "not_configured" | "ready" | "unavailable"
+  enabled: boolean
+  configured: boolean
+  message: string
+}
+
+export async function getNeo4jStatus() {
+  const response = await fetch(`${getApiBaseUrl()}/api/neo4j/status`, {
+    cache: "no-store",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load Neo4j status")
+  }
+
+  return (await response.json()) as Neo4jRuntimeStatus
+}

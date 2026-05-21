@@ -2,7 +2,17 @@
 
 from fastapi import APIRouter
 
-from app.api import chunks, documents, graph, mastery, modules, practice, review, workspaces
+from app.api import (
+    chunks,
+    documents,
+    graph,
+    mastery,
+    modules,
+    neo4j_runtime,
+    practice,
+    review,
+    workspaces,
+)
 
 
 api_router = APIRouter()
@@ -14,3 +24,4 @@ api_router.include_router(practice.router)
 api_router.include_router(mastery.router)
 api_router.include_router(review.router)
 api_router.include_router(workspaces.router)
+api_router.include_router(neo4j_runtime.router)
