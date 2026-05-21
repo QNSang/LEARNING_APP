@@ -16,6 +16,7 @@ from app.models.graph import LearningGraph
 from app.pipeline.orchestrator import (
     ChunkingResult,
     DocumentPipeline,
+    GraphCleanupResult,
     get_document_pipeline,
 )
 
@@ -140,3 +141,18 @@ async def extract_document_graph(
         raise AppError("Document not found.", status_code=404)
 
     return pipeline.extract_learning_graph(document_id)
+
+
+@router.post("/{document_id}/cleanup-graph", response_model=GraphCleanupResult)
+async def cleanup_document_graph(
+    document_id: UUID,
+    repo: DocumentRepository = Depends(get_document_repository),
+    pipeline: DocumentPipeline = Depends(get_document_pipeline),
+) -> GraphCleanupResult:
+    """Run Phase 5 deduplication and validation for a document graph."""
+
+    document = repo.get(document_id)
+    if document is None:
+        raise AppError("Document not found.", status_code=404)
+
+    return pipeline.cleanup_learning_graph(document_id)

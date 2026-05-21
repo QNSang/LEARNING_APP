@@ -19,14 +19,23 @@ from app.models.graph import (
     NodeChunkRefCreate,
 )
 from app.pipeline.chunker import create_chunks
+from app.pipeline.deduplicator import DeduplicationResult, GraphDeduplicator
 from app.pipeline.extractor import GraphExtractor
 from app.pipeline.parser import parse_document
+from app.pipeline.validator import GraphValidationResult, GraphValidator
 
 
 class ChunkingResult(BaseModel):
     document_id: UUID
     chunk_count: int
     chunks: list[Chunk]
+
+
+class GraphCleanupResult(BaseModel):
+    document_id: UUID
+    deduplication: DeduplicationResult
+    validation: GraphValidationResult
+    graph: LearningGraph
 
 
 class DocumentPipeline:
@@ -38,11 +47,15 @@ class DocumentPipeline:
         chunk_repo: ChunkRepository | None = None,
         graph_repo: GraphRepository | None = None,
         graph_extractor: GraphExtractor | None = None,
+        graph_deduplicator: GraphDeduplicator | None = None,
+        graph_validator: GraphValidator | None = None,
     ) -> None:
         self.document_repo = document_repo or DocumentRepository()
         self.chunk_repo = chunk_repo or ChunkRepository()
         self.graph_repo = graph_repo or GraphRepository()
         self.graph_extractor = graph_extractor or GraphExtractor()
+        self.graph_deduplicator = graph_deduplicator or GraphDeduplicator(self.graph_repo)
+        self.graph_validator = graph_validator or GraphValidator(self.graph_repo)
         self.settings = get_settings()
 
     def parse_and_chunk(self, document_id: UUID, file_path: Path) -> ChunkingResult:
@@ -83,6 +96,28 @@ class DocumentPipeline:
                 document_id=document_id,
                 chunk_count=len(chunks),
                 chunks=chunks,
+            )
+        except Exception as exc:
+            self.document_repo.update(
+                document_id,
+                DocumentUpdate(status="error", error_message=str(exc)),
+            )
+            raise
+
+    def cleanup_learning_graph(self, document_id: UUID) -> GraphCleanupResult:
+        """Run Phase 5 duplicate merge and validation cleanup."""
+
+        self.document_repo.update(document_id, DocumentUpdate(status="processing"))
+        try:
+            deduplication = self.graph_deduplicator.deduplicate(document_id)
+            validation = self.graph_validator.validate(document_id)
+            graph = self.graph_repo.get_graph(document_id)
+            self.document_repo.update(document_id, DocumentUpdate(status="ready"))
+            return GraphCleanupResult(
+                document_id=document_id,
+                deduplication=deduplication,
+                validation=validation,
+                graph=graph,
             )
         except Exception as exc:
             self.document_repo.update(

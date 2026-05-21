@@ -128,6 +128,63 @@ class GraphRepository:
             raise AppError("Citation was not saved.", status_code=500)
         return NodeChunkRef.model_validate(row)
 
+    def update_edge_endpoint(
+        self,
+        edge_id: UUID,
+        *,
+        from_node_id: UUID | None = None,
+        to_node_id: UUID | None = None,
+    ) -> KnowledgeEdge | None:
+        record: dict[str, str] = {}
+        if from_node_id is not None:
+            record["from_node_id"] = str(from_node_id)
+        if to_node_id is not None:
+            record["to_node_id"] = str(to_node_id)
+        if not record:
+            return None
+
+        response = execute_query(
+            self.client.table("knowledge_edges")
+            .update(record)
+            .eq("id", str(edge_id))
+        )
+        row = first_or_none(response.data or [])
+        return KnowledgeEdge.model_validate(row) if row else None
+
+    def update_citation_node(
+        self,
+        citation_id: UUID,
+        node_id: UUID,
+    ) -> NodeChunkRef | None:
+        response = execute_query(
+            self.client.table("node_chunk_refs")
+            .update({"node_id": str(node_id)})
+            .eq("id", str(citation_id))
+        )
+        row = first_or_none(response.data or [])
+        return NodeChunkRef.model_validate(row) if row else None
+
+    def delete_node(self, node_id: UUID) -> None:
+        execute_query(
+            self.client.table("knowledge_nodes")
+            .delete()
+            .eq("id", str(node_id))
+        )
+
+    def delete_edge(self, edge_id: UUID) -> None:
+        execute_query(
+            self.client.table("knowledge_edges")
+            .delete()
+            .eq("id", str(edge_id))
+        )
+
+    def delete_citation(self, citation_id: UUID) -> None:
+        execute_query(
+            self.client.table("node_chunk_refs")
+            .delete()
+            .eq("id", str(citation_id))
+        )
+
 
 def get_graph_repository() -> GraphRepository:
     return GraphRepository()
