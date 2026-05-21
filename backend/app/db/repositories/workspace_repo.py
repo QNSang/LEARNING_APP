@@ -1,5 +1,7 @@
 """Workspace repository."""
 
+from __future__ import annotations
+
 from collections import defaultdict
 from uuid import UUID
 

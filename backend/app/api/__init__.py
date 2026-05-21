@@ -11,6 +11,7 @@ from app.api import (
     neo4j_runtime,
     practice,
     review,
+    tutor,
     workspaces,
 )
 
@@ -23,5 +24,6 @@ api_router.include_router(modules.router)
 api_router.include_router(practice.router)
 api_router.include_router(mastery.router)
 api_router.include_router(review.router)
+api_router.include_router(tutor.router)
 api_router.include_router(workspaces.router)
 api_router.include_router(neo4j_runtime.router)

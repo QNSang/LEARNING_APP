@@ -24,6 +24,17 @@ class ChunkRepository:
         )
         return [Chunk.model_validate(row) for row in response.data or []]
 
+    def get_many(self, chunk_ids: list[UUID]) -> list[Chunk]:
+        if not chunk_ids:
+            return []
+        response = execute_query(
+            self.client.table("chunks")
+            .select("*")
+            .in_("id", [str(chunk_id) for chunk_id in chunk_ids])
+            .order("chunk_index")
+        )
+        return [Chunk.model_validate(row) for row in response.data or []]
+
     def create(self, payload: ChunkCreate) -> Chunk:
         response = execute_query(self.client.table("chunks").insert(to_record(payload)))
         row = first_or_none(response.data or [])

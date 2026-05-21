@@ -12,6 +12,61 @@ export function getHealthUrl() {
   return `${getApiBaseUrl()}/health`
 }
 
+export type KnowledgeNode = {
+  id: string
+  document_id: string
+  node_key: string
+  label: string
+  term?: string | null
+  type: string
+  importance: "core" | "supporting" | "detail"
+  difficulty?: number | null
+  description?: string | null
+  node_data?: Record<string, unknown>
+  created_at: string
+}
+
+export type KnowledgeEdge = {
+  id: string
+  document_id: string
+  from_node_id: string
+  to_node_id: string
+  edge_type: string
+  reason?: string | null
+  confidence?: number | null
+  created_at: string
+}
+
+export type NodeChunkRef = {
+  id: string
+  node_id: string
+  chunk_id: string
+  evidence?: string | null
+  source_ref?: string | null
+  confidence?: number | null
+  created_at: string
+}
+
+export type LearningGraph = {
+  document_id: string
+  nodes: KnowledgeNode[]
+  edges: KnowledgeEdge[]
+  citations: NodeChunkRef[]
+}
+
+export async function getDocumentGraph(documentId: string) {
+  const response = await fetch(
+    `${getApiBaseUrl()}/api/documents/${documentId}/graph`,
+    { cache: "no-store" }
+  )
+
+  if (!response.ok) {
+    throw new Error("Unable to load document graph")
+  }
+
+  return (await response.json()) as LearningGraph
+}
+
 export type ReviewQueue = {
   user_id?: string | null
   due_at: string

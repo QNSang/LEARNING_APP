@@ -16,18 +16,8 @@ class AIService:
     def generate_json(self, prompt: str) -> dict[str, Any]:
         """Generate a JSON object from Gemini and parse it strictly."""
 
-        if not self.settings.gemini_api_key:
-            raise AppError("GEMINI_API_KEY is not configured.", status_code=503)
-
-        try:
-            from google import genai
-        except ImportError as exc:
-            raise AppError("google-genai is not installed.", status_code=500) from exc
-
-        client = genai.Client(api_key=self.settings.gemini_api_key)
-        response = client.models.generate_content(
-            model=self.settings.extraction_model,
-            contents=prompt,
+        response = self._generate_content(
+            prompt,
             config={
                 "response_mime_type": "application/json",
                 "temperature": 0.1,
@@ -43,6 +33,36 @@ class AIService:
         if not isinstance(parsed, dict):
             raise AppError("Gemini JSON response must be an object.", status_code=502)
         return parsed
+
+    def generate_text(self, prompt: str) -> str:
+        """Generate plain text from Gemini."""
+
+        response = self._generate_content(
+            prompt,
+            config={
+                "temperature": 0.2,
+            },
+        )
+        text = (response.text or "").strip()
+        if not text:
+            raise AppError("Gemini returned an empty answer.", status_code=502)
+        return text
+
+    def _generate_content(self, prompt: str, config: dict[str, Any]) -> Any:
+        if not self.settings.gemini_api_key:
+            raise AppError("GEMINI_API_KEY is not configured.", status_code=503)
+
+        try:
+            from google import genai
+        except ImportError as exc:
+            raise AppError("google-genai is not installed.", status_code=500) from exc
+
+        client = genai.Client(api_key=self.settings.gemini_api_key)
+        return client.models.generate_content(
+            model=self.settings.extraction_model,
+            contents=prompt,
+            config=config,
+        )
 
 
 def get_ai_service() -> AIService:
