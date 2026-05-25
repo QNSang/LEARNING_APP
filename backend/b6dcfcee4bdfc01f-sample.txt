@@ -1,0 +1,1 @@
+Gradient descent minimizes a loss function. Learning rate controls update size.

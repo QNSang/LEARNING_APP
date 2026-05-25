@@ -26,6 +26,8 @@ class Settings(BaseModel):
     upload_dir: Path = Field(default=Path("uploads"))
     chunk_size_chars: int = Field(default=3200, gt=0)
     chunk_overlap_chars: int = Field(default=400, ge=0)
+    celery_broker_url: str = Field(default="redis://localhost:6379/0")
+    celery_result_backend: str = Field(default="redis://localhost:6379/1")
     use_neo4j: bool = Field(default=False)
     neo4j_uri: str | None = Field(default=None)
     neo4j_user: str | None = Field(default=None)
@@ -51,16 +53,27 @@ def get_settings() -> Settings:
         api_prefix=getenv("API_PREFIX", "/api"),
         frontend_origin=getenv("FRONTEND_ORIGIN", "http://localhost:3000"),
         supabase_url=getenv("SUPABASE_URL"),
-        supabase_key=getenv("SUPABASE_KEY") or getenv("SUPABASE_SERVICE_KEY"),
+        supabase_key=getenv("SUPABASE_SERVICE_KEY") or getenv("SUPABASE_KEY"),
         supabase_service_key=getenv("SUPABASE_SERVICE_KEY"),
         gemini_api_key=getenv("GEMINI_API_KEY"),
         extraction_model=getenv("EXTRACTION_MODEL", "gemini-2.0-flash"),
         upload_dir=Path(getenv("UPLOAD_DIR", "uploads")),
-        chunk_size_chars=int(getenv("CHUNK_SIZE_CHARS", "3200")),
-        chunk_overlap_chars=int(getenv("CHUNK_OVERLAP_CHARS", "400")),
+        chunk_size_chars=get_int_env("CHUNK_SIZE_CHARS", 3200),
+        chunk_overlap_chars=get_int_env("CHUNK_OVERLAP_CHARS", 400),
+        celery_broker_url=getenv("CELERY_BROKER_URL", "redis://localhost:6379/0"),
+        celery_result_backend=getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1"),
         use_neo4j=getenv("USE_NEO4J", "false").lower() in {"1", "true", "yes"},
         neo4j_uri=getenv("NEO4J_URI"),
         neo4j_user=getenv("NEO4J_USER"),
         neo4j_password=getenv("NEO4J_PASSWORD"),
         neo4j_database=getenv("NEO4J_DATABASE"),
     )
+
+
+def get_int_env(key: str, default: int) -> int:
+    """Read an integer env var, treating empty values as unset."""
+
+    value = getenv(key)
+    if value is None or value.strip() == "":
+        return default
+    return int(value)

@@ -5,14 +5,19 @@ from pathlib import Path
 from uuid import UUID
 
 import aiofiles
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from pydantic import BaseModel
 
 from app.core.config import Settings, get_settings
 from app.core.errors import AppError
 from app.db.repositories.document_repo import DocumentRepository, get_document_repository
+from app.db.repositories.pipeline_job_repo import (
+    PipelineJobRepository,
+    get_pipeline_job_repository,
+)
 from app.models.document import Document, DocumentCreate
 from app.models.graph import LearningGraph
+from app.models.pipeline_job import PipelineJobCreate, PipelineJobStatus, PipelineJobUpdate
 from app.pipeline.orchestrator import (
     ChunkingResult,
     DocumentPipeline,
@@ -26,6 +31,9 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 class DocumentUploadResponse(BaseModel):
     document: Document
+    job_id: UUID
+    task_id: str
+    status: PipelineJobStatus
 
 
 @router.get("", response_model=list[Document])
@@ -60,15 +68,20 @@ async def get_document(
     return document
 
 
-@router.post("/upload", response_model=DocumentUploadResponse, status_code=201)
+@router.post(
+    "/upload",
+    response_model=DocumentUploadResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 async def upload_document(
     file: UploadFile = File(...),
     subject: str | None = Form(default=None),
     selected_model: str | None = Form(default=None),
     settings: Settings = Depends(get_settings),
     repo: DocumentRepository = Depends(get_document_repository),
+    job_repo: PipelineJobRepository = Depends(get_pipeline_job_repository),
 ) -> DocumentUploadResponse:
-    """Store an uploaded file locally and create a document record."""
+    """Store an uploaded file locally and enqueue the async pipeline."""
 
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in {".pdf", ".txt"}:
@@ -104,7 +117,34 @@ async def upload_document(
             },
         )
     )
-    return DocumentUploadResponse(document=document)
+    job = job_repo.create(PipelineJobCreate(document_id=document.id))
+
+    try:
+        from app.worker.tasks import run_document_pipeline
+
+        task = run_document_pipeline.delay(str(document.id), str(job.id))
+        job = job_repo.update(
+            job.id,
+            PipelineJobUpdate(celery_task_id=task.id),
+        )
+    except Exception as exc:
+        job_repo.update(
+            job.id,
+            PipelineJobUpdate(
+                status="failed",
+                stage="failed",
+                progress=100,
+                error_message=str(exc),
+            ),
+        )
+        raise AppError("Unable to enqueue document pipeline.", status_code=503) from exc
+
+    return DocumentUploadResponse(
+        document=document,
+        job_id=job.id,
+        task_id=job.celery_task_id or "",
+        status=job.status,
+    )
 
 
 @router.post("/{document_id}/process", response_model=ChunkingResult)

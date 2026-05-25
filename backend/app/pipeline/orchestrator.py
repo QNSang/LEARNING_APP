@@ -1,6 +1,7 @@
 """Pipeline orchestration and state machine."""
 
 from pathlib import Path
+from typing import Callable
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -38,6 +39,13 @@ class GraphCleanupResult(BaseModel):
     graph: LearningGraph
 
 
+class FullPipelineResult(BaseModel):
+    document_id: UUID
+    chunk_count: int
+    node_count: int
+    edge_count: int
+
+
 class DocumentPipeline:
     """Coordinates parse and chunk steps for a document."""
 
@@ -58,13 +66,22 @@ class DocumentPipeline:
         self.graph_validator = graph_validator or GraphValidator(self.graph_repo)
         self.settings = get_settings()
 
-    def parse_and_chunk(self, document_id: UUID, file_path: Path) -> ChunkingResult:
+    def parse_and_chunk(
+        self,
+        document_id: UUID,
+        file_path: Path,
+        on_stage: Callable[[str, int], None] | None = None,
+    ) -> ChunkingResult:
         """Parse a source file, create chunks, and persist chunk links."""
 
         self.document_repo.update(document_id, DocumentUpdate(status="processing"))
 
         try:
+            if on_stage:
+                on_stage("parse", 10)
             pages = parse_document(file_path)
+            if on_stage:
+                on_stage("chunk", 25)
             prepared_chunks = create_chunks(
                 pages,
                 chunk_size_chars=self.settings.chunk_size_chars,
@@ -103,6 +120,38 @@ class DocumentPipeline:
                 DocumentUpdate(status="error", error_message=str(exc)),
             )
             raise
+
+    def run_full_pipeline(
+        self,
+        document_id: UUID,
+        on_stage: Callable[[str, int], None] | None = None,
+    ) -> FullPipelineResult:
+        """Run parse, chunk, graph extraction, and graph cleanup for a document."""
+
+        document = self.document_repo.get(document_id)
+        if document is None:
+            raise AppError("Document not found.", status_code=404)
+        if not document.file_path:
+            raise AppError("Document has no uploaded file path.", status_code=400)
+
+        file_path = Path(document.file_path)
+        if not file_path.exists():
+            raise AppError("Uploaded source file was not found.", status_code=404)
+
+        chunking = self.parse_and_chunk(document_id, file_path, on_stage=on_stage)
+        if on_stage:
+            on_stage("extract", 45)
+        self.extract_learning_graph(document_id)
+        if on_stage:
+            on_stage("cleanup", 80)
+        cleanup = self.cleanup_learning_graph(document_id)
+
+        return FullPipelineResult(
+            document_id=document_id,
+            chunk_count=chunking.chunk_count,
+            node_count=len(cleanup.graph.nodes),
+            edge_count=len(cleanup.graph.edges),
+        )
 
     def cleanup_learning_graph(self, document_id: UUID) -> GraphCleanupResult:
         """Run Phase 5 duplicate merge and validation cleanup."""

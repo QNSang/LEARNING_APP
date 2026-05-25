@@ -10,6 +10,7 @@ from app.api import (
     mastery,
     modules,
     neo4j_runtime,
+    pipeline_jobs,
     practice,
     review,
     tutor,
@@ -29,3 +30,4 @@ api_router.include_router(review.router)
 api_router.include_router(tutor.router)
 api_router.include_router(workspaces.router)
 api_router.include_router(neo4j_runtime.router)
+api_router.include_router(pipeline_jobs.router)

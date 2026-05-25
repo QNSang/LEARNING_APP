@@ -54,6 +54,182 @@ export type LearningGraph = {
   citations: NodeChunkRef[]
 }
 
+export type DocumentStatus =
+  | "new"
+  | "processing"
+  | "ready"
+  | "error"
+  | "cancelled"
+  | "ready_to_reprocess"
+
+export type Document = {
+  id: string
+  title: string
+  subject?: string | null
+  file_path?: string | null
+  file_hash?: string | null
+  status: DocumentStatus
+  token_count?: number | null
+  selected_model?: string | null
+  processing_config: Record<string, unknown>
+  error_message?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type PipelineJobStatus = "pending" | "processing" | "success" | "failed"
+
+export type PipelineJobStage =
+  | "queued"
+  | "parse"
+  | "chunk"
+  | "extract"
+  | "cleanup"
+  | "done"
+  | "failed"
+
+export type PipelineJob = {
+  id: string
+  document_id: string
+  celery_task_id?: string | null
+  status: PipelineJobStatus
+  stage: PipelineJobStage
+  progress: number
+  error_message?: string | null
+  result: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+export type DocumentUploadResponse = {
+  document: Document
+  job_id: string
+  task_id: string
+  status: PipelineJobStatus
+}
+
+export type ChunkingResult = {
+  document_id: string
+  chunk_count: number
+  chunks: Array<{
+    id: string
+    chunk_index: number
+    token_count?: number | null
+    source_ref?: string | null
+  }>
+}
+
+export type GraphCleanupResult = {
+  document_id: string
+  deduplication: Record<string, unknown>
+  validation: Record<string, unknown>
+  graph: LearningGraph
+}
+
+export async function getDocuments() {
+  const response = await fetch(`${getApiBaseUrl()}/api/documents`, {
+    cache: "no-store",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load documents")
+  }
+
+  return (await response.json()) as Document[]
+}
+
+export async function uploadDocument(input: {
+  file: File
+  subject?: string
+  selectedModel?: string
+}) {
+  const formData = new FormData()
+  formData.append("file", input.file)
+
+  if (input.subject) {
+    formData.append("subject", input.subject)
+  }
+
+  if (input.selectedModel) {
+    formData.append("selected_model", input.selectedModel)
+  }
+
+  const response = await fetch(`${getApiBaseUrl()}/api/documents/upload`, {
+    method: "POST",
+    body: formData,
+  })
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to upload document"))
+  }
+
+  return (await response.json()) as DocumentUploadResponse
+}
+
+export async function getPipelineJob(jobId: string) {
+  const response = await fetch(`${getApiBaseUrl()}/api/pipeline-jobs/${jobId}`, {
+    cache: "no-store",
+  })
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load pipeline job"))
+  }
+
+  return (await response.json()) as PipelineJob
+}
+
+export async function getLatestDocumentPipelineJob(documentId: string) {
+  const response = await fetch(
+    `${getApiBaseUrl()}/api/documents/${documentId}/pipeline-jobs/latest`,
+    { cache: "no-store" }
+  )
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load pipeline job"))
+  }
+
+  return (await response.json()) as PipelineJob
+}
+
+export async function processDocument(documentId: string) {
+  const response = await fetch(
+    `${getApiBaseUrl()}/api/documents/${documentId}/process`,
+    { method: "POST" }
+  )
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to process document"))
+  }
+
+  return (await response.json()) as ChunkingResult
+}
+
+export async function extractDocumentGraph(documentId: string) {
+  const response = await fetch(
+    `${getApiBaseUrl()}/api/documents/${documentId}/extract-graph`,
+    { method: "POST" }
+  )
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to extract graph"))
+  }
+
+  return (await response.json()) as LearningGraph
+}
+
+export async function cleanupDocumentGraph(documentId: string) {
+  const response = await fetch(
+    `${getApiBaseUrl()}/api/documents/${documentId}/cleanup-graph`,
+    { method: "POST" }
+  )
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to cleanup graph"))
+  }
+
+  return (await response.json()) as GraphCleanupResult
+}
+
 export async function getDocumentGraph(documentId: string) {
   const response = await fetch(
     `${getApiBaseUrl()}/api/documents/${documentId}/graph`,
@@ -174,4 +350,13 @@ export async function getNeo4jStatus() {
   }
 
   return (await response.json()) as Neo4jRuntimeStatus
+}
+
+async function getErrorMessage(response: Response, fallback: string) {
+  try {
+    const data = (await response.json()) as { detail?: string }
+    return data.detail ?? fallback
+  } catch {
+    return fallback
+  }
 }

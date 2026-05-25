@@ -85,7 +85,7 @@ def normalize_extracted_edge(edge: ExtractedEdge) -> ExtractedEdge:
     )
 
 
-def build_extraction_prompt(chunk: Chunk) -> str:
+def build_extraction_prompt(chunk: Chunk, existing_node_keys: list[str] | None = None) -> str:
     """Build a strict learning graph extraction prompt for one chunk."""
 
     return f"""
@@ -116,11 +116,27 @@ Return only valid JSON with this shape:
 }}
 
 Rules:
+
+- BEFORE creating a node, ask yourself:
+  * Can this concept exist independently of its parent?
+  * Is it referenced by more than one other concept?
+  * Does it have its own prerequisites or applications?
+  If NO to all → put it in the parent node's description, NOT a new node.
+
+- NEVER create nodes for:
+  * Properties or characteristics of a concept ("has binary values", "fixed size")
+  * Simple illustrative examples with no standalone meaning
+  * Facts that only make sense attached to one specific parent
+
+- BUDGET: core ≤ 3, supporting ≤ 3, detail ≤ 2 per chunk.
+- KEYS: use full form as canonical key (latent_semantic_analysis not lsa).
+- CONFIDENCE: skip nodes < 0.5, skip edges < 0.6.
 - Use only the allowed type strings.
 - Extract at most 8 nodes and 10 edges.
 - Every node must include evidence from the chunk.
 - Only create edges between nodes returned in this JSON.
 - Prefer learning relationships: requires, explains, part_of, example_of, tested_by.
+- EXISTING KEYS: reuse exact key if concept already exists: {", ".join(existing_node_keys[:40]) if existing_node_keys else "none yet"}
 
 Source reference: {chunk.source_ref or "unknown source"}
 Chunk text:
