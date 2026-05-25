@@ -1,5 +1,6 @@
 """Pipeline orchestration and state machine."""
 
+import logging
 from pathlib import Path
 from typing import Callable
 from uuid import UUID
@@ -26,6 +27,9 @@ from app.pipeline.parser import parse_document
 from app.pipeline.validator import GraphValidationResult, GraphValidator
 
 
+logger = logging.getLogger(__name__)
+
+
 class ChunkingResult(BaseModel):
     document_id: UUID
     chunk_count: int
@@ -39,11 +43,21 @@ class GraphCleanupResult(BaseModel):
     graph: LearningGraph
 
 
+class ExtractionResult(BaseModel):
+    graph: LearningGraph
+    total_chunks: int
+    successful_chunks: int
+    failed_chunks: int
+    failed_chunk_ids: list[str] = []
+
+
 class FullPipelineResult(BaseModel):
     document_id: UUID
     chunk_count: int
     node_count: int
     edge_count: int
+    document_status: str
+    failed_chunk_count: int = 0
 
 
 class DocumentPipeline:
@@ -141,27 +155,42 @@ class DocumentPipeline:
         chunking = self.parse_and_chunk(document_id, file_path, on_stage=on_stage)
         if on_stage:
             on_stage("extract", 45)
-        self.extract_learning_graph(document_id)
+        extraction = self.extract_learning_graph(document_id)
         if on_stage:
             on_stage("cleanup", 80)
         cleanup = self.cleanup_learning_graph(document_id)
+        document = self.document_repo.get(document_id)
+        document_status = document.status if document else "ready"
 
         return FullPipelineResult(
             document_id=document_id,
             chunk_count=chunking.chunk_count,
             node_count=len(cleanup.graph.nodes),
             edge_count=len(cleanup.graph.edges),
+            document_status=document_status,
+            failed_chunk_count=extraction.failed_chunks,
         )
 
     def cleanup_learning_graph(self, document_id: UUID) -> GraphCleanupResult:
         """Run Phase 5 duplicate merge and validation cleanup."""
 
+        previous_document = self.document_repo.get(document_id)
+        previous_status = previous_document.status if previous_document else "ready"
+        previous_error = previous_document.error_message if previous_document else None
         self.document_repo.update(document_id, DocumentUpdate(status="processing"))
         try:
             deduplication = self.graph_deduplicator.deduplicate(document_id)
             validation = self.graph_validator.validate(document_id)
             graph = self.graph_repo.get_graph(document_id)
-            self.document_repo.update(document_id, DocumentUpdate(status="ready"))
+            final_status = (
+                "partial_success"
+                if previous_status == "partial_success"
+                else "ready"
+            )
+            self.document_repo.update(
+                document_id,
+                DocumentUpdate(status=final_status, error_message=previous_error),
+            )
             return GraphCleanupResult(
                 document_id=document_id,
                 deduplication=deduplication,
@@ -198,7 +227,7 @@ class DocumentPipeline:
                 )
             )
 
-    def extract_learning_graph(self, document_id: UUID) -> LearningGraph:
+    def extract_learning_graph(self, document_id: UUID) -> ExtractionResult:
         """Extract and persist learning graph nodes, edges, and citations."""
 
         chunks = self.chunk_repo.list_by_document(document_id)
@@ -211,9 +240,23 @@ class DocumentPipeline:
                 node.node_key: node.id
                 for node in self.graph_repo.list_nodes(document_id)
             }
+            failed_chunk_ids: list[str] = []
 
             for chunk in chunks:
-                extracted = self.graph_extractor.extract_chunk(chunk)
+                try:
+                    extracted = self.graph_extractor.extract_chunk(
+                        chunk,
+                        existing_node_keys=list(node_ids_by_key.keys()),
+                    )
+                except AppError as exc:
+                    failed_chunk_ids.append(str(chunk.id))
+                    logger.warning(
+                        "Skipping chunk %s during graph extraction: %s",
+                        chunk.id,
+                        exc.message,
+                    )
+                    continue
+
                 for extracted_node in extracted.nodes:
                     saved_node = self.graph_repo.upsert_node(
                         KnowledgeNodeCreate(
@@ -257,8 +300,57 @@ class DocumentPipeline:
                         )
                     )
 
-            self.document_repo.update(document_id, DocumentUpdate(status="ready"))
-            return self.graph_repo.get_graph(document_id)
+            successful_chunks = len(chunks) - len(failed_chunk_ids)
+            extraction_summary = {
+                "total_chunks": len(chunks),
+                "successful_chunks": successful_chunks,
+                "failed_chunks": len(failed_chunk_ids),
+                "failed_chunk_ids": failed_chunk_ids,
+            }
+
+            document = self.document_repo.get(document_id)
+            processing_config = dict(document.processing_config) if document else {}
+            processing_config["extraction"] = extraction_summary
+
+            if successful_chunks == 0:
+                message = "Graph extraction failed for every chunk."
+                self.document_repo.update(
+                    document_id,
+                    DocumentUpdate(
+                        status="error",
+                        processing_config=processing_config,
+                        error_message=message,
+                    ),
+                )
+                raise AppError(message, status_code=502)
+
+            if failed_chunk_ids:
+                message = (
+                    f"Graph extraction partially succeeded: "
+                    f"{successful_chunks}/{len(chunks)} chunks processed."
+                )
+                status = "partial_success"
+                error_message = message
+            else:
+                status = "ready"
+                error_message = None
+
+            self.document_repo.update(
+                document_id,
+                DocumentUpdate(
+                    status=status,
+                    processing_config=processing_config,
+                    error_message=error_message,
+                ),
+            )
+            graph = self.graph_repo.get_graph(document_id)
+            return ExtractionResult(
+                graph=graph,
+                total_chunks=len(chunks),
+                successful_chunks=successful_chunks,
+                failed_chunks=len(failed_chunk_ids),
+                failed_chunk_ids=failed_chunk_ids,
+            )
         except Exception as exc:
             self.document_repo.update(
                 document_id,

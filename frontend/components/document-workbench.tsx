@@ -40,6 +40,7 @@ const statusStyles: Record<Document["status"], string> = {
   new: "border-sky-400/30 bg-sky-400/10 text-sky-100",
   processing: "border-amber-400/30 bg-amber-400/10 text-amber-100",
   ready: "border-emerald-400/30 bg-emerald-400/10 text-emerald-100",
+  partial_success: "border-cyan-400/30 bg-cyan-400/10 text-cyan-100",
   error: "border-rose-400/30 bg-rose-400/10 text-rose-100",
   cancelled: "border-slate-400/30 bg-slate-400/10 text-slate-200",
   ready_to_reprocess: "border-cyan-400/30 bg-cyan-400/10 text-cyan-100",
@@ -74,7 +75,10 @@ export function DocumentWorkbench({
     [documents, selectedDocumentId]
   )
 
-  const readyDocuments = documents.filter((document) => document.status === "ready")
+  const readyDocuments = documents.filter(
+    (document) =>
+      document.status === "ready" || document.status === "partial_success"
+  )
   const errorDocuments = documents.filter((document) => document.status === "error")
   const completion = documents.length
     ? Math.round((readyDocuments.length / documents.length) * 100)
@@ -396,7 +400,8 @@ export function DocumentWorkbench({
                     )}
                   </div>
 
-                  {selectedDocument.status === "ready" ? (
+                  {selectedDocument.status === "ready" ||
+                  selectedDocument.status === "partial_success" ? (
                     <Button asChild>
                       <Link href={`/graph/${selectedDocument.id}`}>
                         Open graph

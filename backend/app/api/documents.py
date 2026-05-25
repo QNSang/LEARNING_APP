@@ -180,7 +180,7 @@ async def extract_document_graph(
     if document is None:
         raise AppError("Document not found.", status_code=404)
 
-    return pipeline.extract_learning_graph(document_id)
+    return pipeline.extract_learning_graph(document_id).graph
 
 
 @router.post("/{document_id}/cleanup-graph", response_model=GraphCleanupResult)

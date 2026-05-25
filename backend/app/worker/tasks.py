@@ -35,9 +35,11 @@ def run_document_pipeline(document_id: str, job_id: str) -> dict[str, object]:
         result = pipeline.run_full_pipeline(parsed_document_id, on_stage=update_stage)
 
         summary = {
+            "document_status": result.document_status,
             "chunk_count": result.chunk_count,
             "node_count": result.node_count,
             "edge_count": result.edge_count,
+            "failed_chunk_count": result.failed_chunk_count,
         }
         job_repo.update(
             parsed_job_id,

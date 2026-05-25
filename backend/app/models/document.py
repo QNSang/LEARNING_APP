@@ -11,6 +11,7 @@ DocumentStatus = Literal[
     "new",
     "processing",
     "ready",
+    "partial_success",
     "error",
     "cancelled",
     "ready_to_reprocess",
